@@ -9,6 +9,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import java.io.File
@@ -19,16 +20,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var urlInput: EditText
     private lateinit var statusText: TextView
     private lateinit var downloadBtn: Button
+    private var initialized = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // yt-dlp初期化
-        try {
-            YoutubeDL.getInstance().init(this)
-        } catch (e: Exception) {
-            // 初期化済みの場合は無視
-        }
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -57,7 +52,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         statusText = TextView(this).apply {
-            text = "待機中"
+            text = "初期化中..."
         }
 
         layout.addView(title)
@@ -65,6 +60,18 @@ class MainActivity : AppCompatActivity() {
         layout.addView(downloadBtn)
         layout.addView(statusText)
         setContentView(layout)
+
+        // yt-dlpとFFmpegを初期化（時間がかかるので別スレッド）
+        thread {
+            try {
+                YoutubeDL.getInstance().init(this)
+                FFmpeg.getInstance().init(this)
+                initialized = true
+                runOnUiThread { statusText.text = "待機中（初期化完了）" }
+            } catch (e: Exception) {
+                runOnUiThread { statusText.text = "初期化エラー: ${e.message}" }
+            }
+        }
 
         handleDeepLink(intent)
     }
@@ -87,6 +94,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startDownload(url: String) {
+        if (!initialized) {
+            Toast.makeText(this, "初期化が終わるまで待ってね", Toast.LENGTH_SHORT).show()
+            return
+        }
         downloadBtn.isEnabled = false
         statusText.text = "ダウンロード開始...\n$url"
 
@@ -101,7 +112,7 @@ class MainActivity : AppCompatActivity() {
                 request.addOption("--merge-output-format", "webm")
                 request.addOption("-o", "${downloadDir.absolutePath}/%(id)s.%(ext)s")
 
-                val response = YoutubeDL.getInstance().execute(request) { progress, eta, _ ->
+                YoutubeDL.getInstance().execute(request) { progress, eta, _ ->
                     runOnUiThread {
                         statusText.text = "ダウンロード中: ${progress.toInt()}% (残り約${eta}秒)"
                     }
