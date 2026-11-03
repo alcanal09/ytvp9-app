@@ -3,6 +3,7 @@ package com.ytvp9.app
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -60,14 +61,18 @@ class MainActivity : AppCompatActivity() {
         layout.addView(statusText)
         setContentView(layout)
 
-        // yt-dlpを初期化（時間がかかるので別スレッド）
+        // yt-dlpを初期化（applicationContextを渡し、詳細な原因も取得）
         thread {
             try {
-                YoutubeDL.getInstance().init(this)
+                YoutubeDL.getInstance().init(applicationContext)
                 initialized = true
                 runOnUiThread { statusText.text = "待機中（初期化完了）" }
             } catch (e: Exception) {
-                runOnUiThread { statusText.text = "初期化エラー: ${e.message}" }
+                Log.e("YTVP9", "YoutubeDL初期化失敗", e)
+                val detail = e.cause?.message ?: e.message ?: e.toString()
+                runOnUiThread {
+                    statusText.text = "初期化エラー: ${e.javaClass.simpleName}\n詳細: $detail"
+                }
             }
         }
 
@@ -122,8 +127,10 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this, "ダウンロード完了", Toast.LENGTH_LONG).show()
                 }
             } catch (e: Exception) {
+                Log.e("YTVP9", "ダウンロード失敗", e)
+                val detail = e.cause?.message ?: e.message ?: e.toString()
                 runOnUiThread {
-                    statusText.text = "エラー: ${e.message}"
+                    statusText.text = "エラー: $detail"
                     downloadBtn.isEnabled = true
                     Toast.makeText(this, "ダウンロード失敗", Toast.LENGTH_LONG).show()
                 }
