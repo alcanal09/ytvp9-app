@@ -6,3 +6,5 @@ dependencyResolutionManagement {
         maven { url = uri("https://jitpack.io") }
     }
 }
+rootProject.name = "YTVP9"
+include(":app")
