@@ -9,14 +9,26 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLRequest
+import java.io.File
+import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var urlInput: EditText
     private lateinit var statusText: TextView
+    private lateinit var downloadBtn: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // yt-dlp初期化
+        try {
+            YoutubeDL.getInstance().init(this)
+        } catch (e: Exception) {
+            // 初期化済みの場合は無視
+        }
 
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -32,14 +44,14 @@ class MainActivity : AppCompatActivity() {
             hint = "YouTube URLを入力"
         }
 
-        val downloadBtn = Button(this).apply {
+        downloadBtn = Button(this).apply {
             text = "ダウンロード"
             setOnClickListener {
                 val url = urlInput.text.toString().trim()
                 if (url.isEmpty()) {
                     Toast.makeText(this@MainActivity, "URLを入力してね", Toast.LENGTH_SHORT).show()
                 } else {
-                    statusText.text = "URL受付: $url\n（ダウンロード機能は準備中）"
+                    startDownload(url)
                 }
             }
         }
@@ -54,7 +66,6 @@ class MainActivity : AppCompatActivity() {
         layout.addView(statusText)
         setContentView(layout)
 
-        // ディープリンクからの起動を処理
         handleDeepLink(intent)
     }
 
@@ -71,6 +82,42 @@ class MainActivity : AppCompatActivity() {
                 urlInput.setText(youtubeUrl)
                 statusText.text = "Museからの指示を受信:\n$youtubeUrl"
                 Toast.makeText(this, "ダウンロード指示を受信したよ", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun startDownload(url: String) {
+        downloadBtn.isEnabled = false
+        statusText.text = "ダウンロード開始...\n$url"
+
+        thread {
+            try {
+                val downloadDir = File(getExternalFilesDir(null), "downloads")
+                if (!downloadDir.exists()) downloadDir.mkdirs()
+
+                val request = YoutubeDLRequest(url)
+                request.addOption("--no-playlist")
+                request.addOption("-f", "bv*[vcodec^=vp09][height<=1440]+ba[acodec^=opus]/bv*[vcodec^=vp09]+ba/best")
+                request.addOption("--merge-output-format", "webm")
+                request.addOption("-o", "${downloadDir.absolutePath}/%(id)s.%(ext)s")
+
+                val response = YoutubeDL.getInstance().execute(request) { progress, eta, _ ->
+                    runOnUiThread {
+                        statusText.text = "ダウンロード中: ${progress.toInt()}% (残り約${eta}秒)"
+                    }
+                }
+
+                runOnUiThread {
+                    statusText.text = "ダウンロード完了！\n保存先: ${downloadDir.absolutePath}"
+                    downloadBtn.isEnabled = true
+                    Toast.makeText(this, "ダウンロード完了", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    statusText.text = "エラー: ${e.message}"
+                    downloadBtn.isEnabled = true
+                    Toast.makeText(this, "ダウンロード失敗", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }
