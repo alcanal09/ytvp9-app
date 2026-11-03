@@ -19,6 +19,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var urlInput: EditText
     private lateinit var statusText: TextView
+    private lateinit var fileListText: TextView
     private lateinit var downloadBtn: Button
     private var initialized = false
 
@@ -55,13 +56,26 @@ class MainActivity : AppCompatActivity() {
             text = "初期化中..."
         }
 
+        val listTitle = TextView(this).apply {
+            text = "── ダウンロード済み ──"
+            textSize = 18f
+            setPadding(0, 32, 0, 0)
+        }
+
+        fileListText = TextView(this).apply {
+            text = "（なし）"
+        }
+
         layout.addView(title)
         layout.addView(urlInput)
         layout.addView(downloadBtn)
         layout.addView(statusText)
+        layout.addView(listTitle)
+        layout.addView(fileListText)
         setContentView(layout)
 
-        // yt-dlpを初期化（applicationContextを渡し、詳細な原因も取得）
+        refreshFileList()
+
         thread {
             try {
                 YoutubeDL.getInstance().init(applicationContext)
@@ -96,45 +110,4 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startDownload(url: String) {
-        if (!initialized) {
-            Toast.makeText(this, "初期化が終わるまで待ってね", Toast.LENGTH_SHORT).show()
-            return
-        }
-        downloadBtn.isEnabled = false
-        statusText.text = "ダウンロード開始...\n$url"
-
-        thread {
-            try {
-                val downloadDir = File(getExternalFilesDir(null), "downloads")
-                if (!downloadDir.exists()) downloadDir.mkdirs()
-
-                val request = YoutubeDLRequest(url)
-                request.addOption("--no-playlist")
-                request.addOption("-f", "bv*[vcodec^=vp09][height<=1440]+ba[acodec^=opus]/bv*[vcodec^=vp09]+ba/best")
-                request.addOption("--merge-output-format", "webm")
-                request.addOption("-o", "${downloadDir.absolutePath}/%(id)s.%(ext)s")
-
-                YoutubeDL.getInstance().execute(request) { progress, eta, _ ->
-                    runOnUiThread {
-                        statusText.text = "ダウンロード中: ${progress.toInt()}% (残り約${eta}秒)"
-                    }
-                }
-
-                runOnUiThread {
-                    statusText.text = "ダウンロード完了！\n保存先: ${downloadDir.absolutePath}"
-                    downloadBtn.isEnabled = true
-                    Toast.makeText(this, "ダウンロード完了", Toast.LENGTH_LONG).show()
-                }
-            } catch (e: Exception) {
-                Log.e("YTVP9", "ダウンロード失敗", e)
-                val detail = e.cause?.message ?: e.message ?: e.toString()
-                runOnUiThread {
-                    statusText.text = "エラー: $detail"
-                    downloadBtn.isEnabled = true
-                    Toast.makeText(this, "ダウンロード失敗", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-    }
-}
+    private fun
