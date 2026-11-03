@@ -9,7 +9,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import java.io.File
@@ -61,11 +60,10 @@ class MainActivity : AppCompatActivity() {
         layout.addView(statusText)
         setContentView(layout)
 
-        // yt-dlpとFFmpegを初期化（時間がかかるので別スレッド）
+        // yt-dlpを初期化（時間がかかるので別スレッド）
         thread {
             try {
                 YoutubeDL.getInstance().init(this)
-                FFmpeg.getInstance().init(this)
                 initialized = true
                 runOnUiThread { statusText.text = "待機中（初期化完了）" }
             } catch (e: Exception) {
