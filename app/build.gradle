@@ -1,35 +1,55 @@
-apply plugin: "com.android.application"
-apply plugin: "org.jetbrains.kotlin.android"
+package com.ytvp9.app
 
-android {
-    namespace = "com.ytvp9.app"
-    compileSdk = 34
+import android.os.Bundle
+import android.widget.Button
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 
-    defaultConfig {
-        applicationId = "com.ytvp9.app"
-        minSdk = 26
-        targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
-    }
+class MainActivity : AppCompatActivity() {
 
-    buildTypes {
-        release {
-            minifyEnabled false
+    private lateinit var urlInput: EditText
+    private lateinit var statusText: TextView
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(32, 32, 32, 32)
         }
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-}
 
-dependencies {
-    implementation "androidx.core:core-ktx:1.13.1"
-    implementation "androidx.appcompat:appcompat:1.7.0"
-    implementation "com.google.android.material:material:1.12.0"
-    implementation "com.github.xibr:youtubedl-android:0.10.1"
+        val title = TextView(this).apply {
+            text = "YTVP9 ダウンローダー"
+            textSize = 24f
+        }
+
+        urlInput = EditText(this).apply {
+            hint = "YouTube URLを入力"
+        }
+
+        val downloadBtn = Button(this).apply {
+            text = "ダウンロード"
+            setOnClickListener {
+                val url = urlInput.text.toString().trim()
+                if (url.isEmpty()) {
+                    Toast.makeText(this@MainActivity, "URLを入力してね", Toast.LENGTH_SHORT).show()
+                } else {
+                    statusText.text = "URL受付: $url\n（ダウンロード機能は準備中）"
+                }
+            }
+        }
+
+        statusText = TextView(this).apply {
+            text = "待機中"
+        }
+
+        layout.addView(title)
+        layout.addView(urlInput)
+        layout.addView(downloadBtn)
+        layout.addView(statusText)
+        setContentView(layout)
+    }
 }
